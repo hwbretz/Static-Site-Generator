@@ -1,6 +1,7 @@
 import unittest
 
 from textnode import *
+from block import *
 
 class TestTextNode(unittest.TestCase):
     def test_eq(self):
@@ -47,28 +48,19 @@ class TestTextNode(unittest.TestCase):
 
     def test_split_nodes(self):
         code_node = TextNode("This is text with a `code block` word")
-        split_nodes_code = split_nodes_delimiter(code_node,TextType.CODE)
+        split_nodes_code = split_nodes_delimiter([code_node],"`",TextType.CODE)
         #print(split_nodes_code)
         self.assertEqual("code block",split_nodes_code[1].text)
         self.assertEqual(split_nodes_code[1].text_type, TextType.CODE)
 
-        #link_node = TextNode("This is text with a [link](www.yourmom.com) word")
-        #split_nodes_link = split_nodes_delimiter(link_node,TextType.LINK)
-        #self.assertEqual("link",split_nodes_link[1].text)
-        #self.assertEqual(split_nodes_link[1].text_type, TextType.LINK)
-
-        #image_node = TextNode("This is text with an ![image](www.yourmom.com/lol.jpg) word")
-        #split_nodes_image = split_nodes_delimiter(image_node,TextType.IMAGE)
-        #self.assertEqual("image",split_nodes_image[1].text)
-        #self.assertEqual(split_nodes_image[1].text_type, TextType.IMAGE)
 
         italic_node = TextNode("This is text with a _italic block_ word")
-        split_nodes_italic = split_nodes_delimiter(italic_node,TextType.ITALIC)
+        split_nodes_italic = split_nodes_delimiter([italic_node],"_",TextType.ITALIC)
         self.assertEqual("italic block",split_nodes_italic[1].text)
         self.assertEqual(split_nodes_italic[1].text_type, TextType.ITALIC)
 
         bold_node = TextNode("This is text with a **bold block** word")
-        split_nodes_bold = split_nodes_delimiter(bold_node,TextType.BOLD)
+        split_nodes_bold = split_nodes_delimiter([bold_node],"**",TextType.BOLD)
         self.assertEqual("bold block",split_nodes_bold[1].text)
         self.assertEqual(split_nodes_bold[1].text_type, TextType.BOLD)
 
@@ -139,7 +131,87 @@ class TestTextNode(unittest.TestCase):
         new_links_nodes = split_nodes_link([node_2])
         #print(new_nodes_2)
         self.assertListEqual([TextNode("YO LINK",TextType.LINK,"www.linkster.com"),TextNode(" is the place to link homie.",TextType.TEXT)],new_links_nodes,)
+    
+    def test_text_to_textnodes(self):
+        nodes = text_to_textnodes(
+            "This is **text** with an _italic_ word and a `code block` and an ![image](https://i.imgur.com/zjjcJKZ.png) and a [link](https://boot.dev)"
+        )
+        #for node in nodes:
+            #print(node)
 
-        
+        self.assertListEqual(
+                [
+                    TextNode("This is ", TextType.TEXT),
+                    TextNode("text", TextType.BOLD),
+                    TextNode(" with an ", TextType.TEXT),
+                    TextNode("italic", TextType.ITALIC),
+                    TextNode(" word and a ", TextType.TEXT),
+                    TextNode("code block", TextType.CODE),
+                    TextNode(" and an ", TextType.TEXT),
+                    TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+                    TextNode(" and a ", TextType.TEXT),
+                    TextNode("link", TextType.LINK, "https://boot.dev"),
+                ],
+                nodes,
+            )    
+    def test_markdown_to_blocks(self):
+        md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(
+            blocks,
+            [
+                "This is **bolded** paragraph",
+                "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+                "- This is a list\n- with items",
+            ],
+        )    
+    
+    def test_blocktypes(self):
+        block = "# heading"
+        self.assertEqual(block_to_block_type(block), BlockType.HEADING)
+        block = "```\ncode\n```"
+        self.assertEqual(block_to_block_type(block), BlockType.CODE)
+        block = "> quote\n> more quote"
+        self.assertEqual(block_to_block_type(block), BlockType.QUOTE)
+        block = "- list\n- items"
+        self.assertEqual(block_to_block_type(block), BlockType.UNORDERED_LIST)
+        block = "1. list\n2. items"
+        self.assertEqual(block_to_block_type(block), BlockType.ORDERED_LIST)
+        block = "paragraph"
+        self.assertEqual(block_to_block_type(block), BlockType.PARAGRAPH)
+
+    def test_paragraphs(self):
+        md = """This is **bolded** paragraph\ntext in a p\ntag here\n\nThis is another paragraph with _italic_ text and `code` here\n"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+                html,
+                "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>",
+            )
+
+    def test_codeblock(self):
+        md = """```This is text that _should_ remain\nthe **same** even with inline stuff\n```"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
+        ) 
+    
+    def test_header_extraction(self):
+        test_string = "# This is a header  "
+        test_2_string = " This is a header  "
+        self.assertNotEqual(extract_tile(test_2_string),extract_tile(test_string))
+
 if __name__ == "__main__":
     unittest.main()
