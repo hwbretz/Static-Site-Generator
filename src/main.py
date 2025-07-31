@@ -2,12 +2,20 @@ from textnode import *
 from block import *
 import os
 import shutil
+import sys
 
 #print("Hello World")
 def main():
-    del_contents(os.path.abspath("public"))
-    copy_contents(os.path.abspath("static"),os.path.abspath("public")) 
-    generate_pages_recursive("content","template.html","public")
+    basepath = ""
+    if len(sys.argv) > 1:
+        basepath = sys.argv[1]
+    else:
+        basepath = "/"
+    print(f"basepath: {basepath}")
+
+    del_contents(os.path.abspath("docs"))
+    copy_contents(os.path.abspath("static"),os.path.abspath("docs")) 
+    generate_pages_recursive("content","template.html","docs",basepath)
 
 def copy_contents(source, destination):
     
@@ -41,7 +49,7 @@ def extract_tile(markdown):
             return line[2:].strip()
     raise ValueError("Missing Header")
 
-def generate_page(from_path,template_path, dest_path):
+def generate_page(from_path,template_path, dest_path,basepath):
     #from_path = os.path.join(from_path,template_path)
     from_path = os.path.abspath(from_path)
     #from_path = os.path.join(from_path,"index.md")
@@ -67,6 +75,9 @@ def generate_page(from_path,template_path, dest_path):
     
     tmp_html_template = tmp_html_template.replace("{{ Title }}",title)
     tmp_html_template = tmp_html_template.replace("{{ Content }}",html_str)
+    tmp_html_template = tmp_html_template.replace('href=/"',f'href="{basepath}')
+    tmp_html_template = tmp_html_template.replace('src=/"',f'src={basepath}')
+
     #print(tmp_html_template)
 
     dest_dir_path = os.path.dirname(dest_path)
@@ -78,7 +89,7 @@ def generate_page(from_path,template_path, dest_path):
     with open(dest_path,"w") as new_html_template:
         new_html_template.write(tmp_html_template)
 
-def generate_pages_recursive(dir_path_content,template_path,dest_dir_path):
+def generate_pages_recursive(dir_path_content,template_path,dest_dir_path,basepath):
     dir_path_content = os.path.abspath(dir_path_content)
     template_path = os.path.abspath(template_path)
     dest_dir_path = os.path.abspath(dest_dir_path)
@@ -90,7 +101,7 @@ def generate_pages_recursive(dir_path_content,template_path,dest_dir_path):
         
         # file found, send to generate page
         if os.path.isfile(content_path):
-            generate_page(content_path,template_path,dest_dir_path)
+            generate_page(content_path,template_path,dest_dir_path,basepath)
 
         # directory found, make new directory, send new directory address through again
         elif os.path.isdir(content_path):
@@ -98,7 +109,7 @@ def generate_pages_recursive(dir_path_content,template_path,dest_dir_path):
             if dest_dir_path != "":
                 os.makedirs(dest_path,exist_ok=True)
             #print(f"directory: {content_path} -> {os.path.join(dest_dir_path,file)}")
-            generate_pages_recursive(content_path,template_path,os.path.join(dest_dir_path,file))
+            generate_pages_recursive(content_path,template_path,os.path.join(dest_dir_path,file),basepath)
         
 
 if __name__ == "__main__":
